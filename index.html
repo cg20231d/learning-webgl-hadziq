@@ -52,9 +52,6 @@
             -0.5, -0.5,  // Vertex 1
              0.5, -0.5,  // Vertex 2
              0.5,  0.5,  // Vertex 3
-            -0.5, -0.5,  // Vertex 4
-             0.5, -0.5,  // Vertex 5
-             0.5,  0.5,  // Vertex 6
         ]);
 
         // Step 6: Create and bind buffers
@@ -75,7 +72,7 @@
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             // Draw the point
-            gl.drawArrays(gl.LINES, 0, 6);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
 
             requestAnimationFrame(render);
         }
