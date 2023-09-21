@@ -25,9 +25,18 @@
 
         const fragmentShaderSource = `
             // Fragment shader code (GLSL)
+            precision mediump float;
+            uniform float u_i;
             void main() {
-                // Set fragment color
-                gl_FragColor = vec4(255.0/255.0, 0.0, 255.0/255.0, 1.0); // Fuchsia #FF00FF
+                // Interpolate between FUCHSIA and BLACK based on the value of u_i
+                vec4 fuchsiaColor = vec4(1.0, 0.0, 1.0, 1.0); // FUCHSIA color
+                vec4 blackColor = vec4(0.0, 0.0, 0.0, 1.0);    // BLACK color
+
+                // Calculate the interpolated color
+                vec4 interpolatedColor = mix(fuchsiaColor, blackColor, u_i);
+
+                gl_FragColor = interpolatedColor;
+                /*gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);*/
             }
         `;
 
@@ -56,6 +65,8 @@
             -0.5, -0.5,  // Vertex 5
              0.5,  0.5,  // Vertex 6
         ]);
+        // Pass the elapsed time to the fragment shader as a uniform
+        const iUniformLocation = gl.getUniformLocation(program, 'u_i');
 
         // Step 6: Create and bind buffers
         const positionBuffer = gl.createBuffer();
@@ -65,13 +76,16 @@
         gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
         // Step 7: Rendering loop
-        let i = 0;
-        let d = 1;
+        let i = 0.0;
+        let d = 0.01;
         function render() {
             // Clear canvas
-            gl.clearColor(i/255, 0, 0, 1.0);
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+            gl.uniform1f(iUniformLocation, i);
             i += d;
-            if (i == 255 || i == 0) d = -d;
+            if (i >= 1.0 || i <= 0.0) d = -d;
+
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             // Draw the point
