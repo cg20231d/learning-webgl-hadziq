@@ -19,15 +19,17 @@
             precision mediump float;
             attribute vec3 a_position;
             attribute vec4 a_color;
-            varying vec4 v_color;
             attribute vec3 a_normal;
+            varying vec4 v_color;
             varying vec3 v_normal;
+            varying vec3 v_fragPos;
             uniform mat4 u_modelMatrix;
             uniform mat4 u_viewprojectionMatrix;
             void main() {
                 gl_Position = u_viewprojectionMatrix * u_modelMatrix * vec4(a_position, 1.0);
                 v_color = a_color;
                 v_normal = mat3(u_modelMatrix) * a_normal; // Transform normal to world space
+                v_fragPos = mat3(u_modelMatrix) * a_position;   // Transform fragment position
             }
         `;
 
@@ -37,21 +39,33 @@
             uniform float u_i;
             varying vec4 v_color;
             varying vec3 v_normal;
+            varying vec3 v_fragPos;
             uniform vec3 u_ambientColor;
             uniform vec3 u_directionalLightDirection; // Direction of the directional light
             uniform vec3 u_directionalLightColor; // Color of the directional light
+            uniform vec3 u_pointLightPosition;
+            uniform vec3 u_pointLightColor;
+            uniform float u_pointLightIntensity;
             
-            void main() {
+            void main() {  
+                // POINT LIGHT
                 vec3 normal = normalize(v_normal);
+                vec3 directionFromFragmentToLightSource = normalize(u_pointLightPosition - v_fragPos);
+                float pointLightDotProduct = max(dot(normal, directionFromFragmentToLightSource), 0.0);
+                vec3 pointLightDiffuse = u_pointLightColor * pointLightDotProduct * u_pointLightIntensity;
+
+                // DIRECTIONAL LIGHT
                 vec3 lightDirection = normalize(u_directionalLightDirection);
                 // Calculate the dot product between the normal and light direction
                 float dotProduct = max(dot(normal, lightDirection), 0.0);
                 // Calculate the final color with directional lighting
                 vec3 diffuse = u_directionalLightColor * dotProduct;
-
+                
+                // AMBIENT
                 vec4 ambient = vec4(u_ambientColor, 1.0);
 
-                vec4 finalColor = ambient * v_color + vec4(diffuse, 1.0); // + specular;
+                // TOTAL LIGHTING/SHADING
+                vec4 finalColor = ambient * v_color + vec4(diffuse, 1.0) + vec4(pointLightDiffuse, 1.0); // + specular;
 
                 // Interpolate between FUCHSIA and BLACK based on the value of u_i
                 vec4 blackColor = vec4(0.0, 0.0, 0.0, 1.0);    // BLACK color
@@ -129,32 +143,7 @@
             1.0, 0.0, 0.0, 1.0,
             1.0, 0.0, 0.0, 1.0,
             1.0, 0.0, 0.0, 1.0,
-            // Front face (Red)
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            // Front face (Red)
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            // Front face (Red)
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            // Front face (Red)
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            // Front face (Red)
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            1.0, 0.0, 0.0, 1.0,
-            /*// Back face (Green)
+            // Back face (Green)
             0.0, 1.0, 0.0, 1.0,
             0.0, 1.0, 0.0, 1.0,
             0.0, 1.0, 0.0, 1.0,
@@ -178,7 +167,7 @@
             1.0, 0.5, 0.0, 1.0,
             1.0, 0.5, 0.0, 1.0,
             1.0, 0.5, 0.0, 1.0,
-            1.0, 0.5, 0.0, 1.0,*/
+            1.0, 0.5, 0.0, 1.0,
         ]);
 
         const cubeNormals = new Float32Array([
@@ -296,7 +285,7 @@
             }
         });
 
-        // For the lighting
+        // For the ambient lighting
         const ambientColorLocation = gl.getUniformLocation(program, 'u_ambientColor');
         gl.uniform3fv(ambientColorLocation, [0.5, 0.5, 0.5]);
         // Get the uniform locations for directional light direction and color
@@ -308,6 +297,14 @@
         // Set the directional light color (as an RGB value)
         const directionalLightColor = [0.8, 0.8, 0.8]; // Adjust the color as needed
         gl.uniform3fv(directionalLightColorLocation, directionalLightColor);
+        // Get the uniform locations for point light position, color, and intensity
+        const pointLightPositionLocation = gl.getUniformLocation(program, 'u_pointLightPosition');
+        const pointLightColorLocation = gl.getUniformLocation(program, 'u_pointLightColor');
+        const pointLightIntensityLocation = gl.getUniformLocation(program, 'u_pointLightIntensity');
+        // Set the values for the above uniform variables
+        gl.uniform3f(pointLightPositionLocation, 1.0, 2.0, 3.0);
+        gl.uniform3fv(pointLightColorLocation, [1.0, 1.0, 1.0]);
+        gl.uniform1f(pointLightIntensityLocation, 0.8);
 
         // Step 9: Rendering loop
         let i = 0.0;
@@ -320,9 +317,9 @@
         gl.enable(gl.DEPTH_TEST);
         function render() {
             modelMatrix = mat4.create();
+            mat4.translate(modelMatrix, modelMatrix, cubePosition);
             mat4.rotateY(modelMatrix, modelMatrix, i);
             mat4.rotateX(modelMatrix, modelMatrix, i);
-            mat4.translate(modelMatrix, modelMatrix, cubePosition);
             gl.uniformMatrix4fv(modelMatrixLocation, false, modelMatrix);
             gl.uniform1f(iLocation, i);
 
