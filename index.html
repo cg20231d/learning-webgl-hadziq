@@ -270,6 +270,7 @@
             const key = event.key;
             switch (key) {
                 case 'ArrowUp':
+                    console.log("Up");
                     cubePosition[1] += cubeSpeed; // Move up
                     break;
                 case 'ArrowDown':
@@ -282,17 +283,18 @@
                     cubePosition[0] += cubeSpeed; // Move right
                     break;
             }
-            switch (key) {
-                case 'W':
+            const code = event.code;
+            switch (code) {
+                case 'KeyW':
                     cameraPosition[1] += cubeSpeed; // Move up
                     break;
-                case 'S':
+                case 'KeyS':
                     cameraPosition[1] -= cubeSpeed; // Move down
                     break;
-                case 'A':
+                case 'KeyA':
                     cameraPosition[0] -= cubeSpeed; // Move left
                     break;
-                case 'D':
+                case 'KeyD':
                     cameraPosition[0] += cubeSpeed; // Move right
                     break;
             }
