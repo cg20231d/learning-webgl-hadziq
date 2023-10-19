@@ -46,26 +46,33 @@
             uniform vec3 u_pointLightPosition;
             uniform vec3 u_pointLightColor;
             uniform float u_pointLightIntensity;
+            uniform vec3 u_cameraPosition;
             
-            void main() {  
+            void main() { 
                 // POINT LIGHT
                 vec3 normal = normalize(v_normal);
                 vec3 directionFromFragmentToLightSource = normalize(u_pointLightPosition - v_fragPos);
                 float pointLightDotProduct = max(dot(normal, directionFromFragmentToLightSource), 0.0);
-                vec3 pointLightDiffuse = u_pointLightColor * pointLightDotProduct * u_pointLightIntensity;
+                vec4 pointLightDiffuse = vec4(u_pointLightColor * pointLightDotProduct * u_pointLightIntensity, 1.0);
+
+                // SPECULAR LIGHT
+                vec3 directionFromLightSourceToFragment = -directionFromFragmentToLightSource;
+                vec3 directionOfReflection = reflect(directionFromLightSourceToFragment, normal);
+                vec3 directionToViewer = normalize(u_cameraPosition - v_fragPos);
+                vec4 specular = vec4(pow(max(dot(directionToViewer, directionOfReflection), 0.0), 132.0) * u_pointLightColor, 1.0);
 
                 // DIRECTIONAL LIGHT
                 vec3 lightDirection = normalize(u_directionalLightDirection);
                 // Calculate the dot product between the normal and light direction
                 float dotProduct = max(dot(normal, lightDirection), 0.0);
                 // Calculate the final color with directional lighting
-                vec3 diffuse = u_directionalLightColor * dotProduct;
+                vec4 diffuse = vec4(u_directionalLightColor * dotProduct, 1.0);
                 
                 // AMBIENT
                 vec4 ambient = vec4(u_ambientColor, 1.0);
 
                 // TOTAL LIGHTING/SHADING
-                vec4 finalColor = ambient * v_color + vec4(diffuse, 1.0) + vec4(pointLightDiffuse, 1.0); // + specular;
+                vec4 finalColor = (ambient + diffuse + pointLightDiffuse + specular) * v_color;
 
                 // Interpolate between FUCHSIA and BLACK based on the value of u_i
                 vec4 blackColor = vec4(0.0, 0.0, 0.0, 1.0);    // BLACK color
@@ -249,17 +256,9 @@
 
         // Step 8: Set up the view matrix (camera position and orientation)
         const viewMatrix = mat4.create();
-        const cameraPosition = vec3.fromValues(2.0, 2.0, 5.0); // Adjust the camera position
+        let cameraPosition = [2.0, 2.0, 5.0]; // Adjust the camera position
         const targetPosition = vec3.fromValues(0.0, 0.0, 0.0); // Point the camera at the origin
         const upVector = vec3.fromValues(0.0, 1.0, 0.0); // Define the up vector
-        mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
-
-        // Combine the view matrix with the projection matrix
-        const viewProjectionMatrix = mat4.create();
-        mat4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
-
-        // Pass the viewProjectionMatrix to your shaders as a uniform
-        gl.uniformMatrix4fv(viewProjectionMatrixLocation, false, viewProjectionMatrix);
 
         // Prepare the matrices for model transformation
         let modelMatrix = mat4.create();
@@ -281,6 +280,20 @@
                     break;
                 case 'ArrowRight':
                     cubePosition[0] += cubeSpeed; // Move right
+                    break;
+            }
+            switch (key) {
+                case 'W':
+                    cameraPosition[1] += cubeSpeed; // Move up
+                    break;
+                case 'S':
+                    cameraPosition[1] -= cubeSpeed; // Move down
+                    break;
+                case 'A':
+                    cameraPosition[0] -= cubeSpeed; // Move left
+                    break;
+                case 'D':
+                    cameraPosition[0] += cubeSpeed; // Move right
                     break;
             }
         });
@@ -305,6 +318,8 @@
         gl.uniform3f(pointLightPositionLocation, 1.0, 2.0, 3.0);
         gl.uniform3fv(pointLightColorLocation, [1.0, 1.0, 1.0]);
         gl.uniform1f(pointLightIntensityLocation, 0.8);
+        // For the specular
+        const cameraPositionLocation = gl.getUniformLocation(program, 'u_cameraPosition');
 
         // Step 9: Rendering loop
         let i = 0.0;
@@ -316,6 +331,14 @@
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
         gl.enable(gl.DEPTH_TEST);
         function render() {
+            gl.uniform3fv(cameraPositionLocation, cameraPosition);
+            // Combine the view matrix with the projection matrix
+            mat4.lookAt(viewMatrix, cameraPosition, targetPosition, upVector);
+            const viewProjectionMatrix = mat4.create();
+            mat4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
+            // Pass the viewProjectionMatrix to your shaders as a uniform
+            gl.uniformMatrix4fv(viewProjectionMatrixLocation, false, viewProjectionMatrix);
+
             modelMatrix = mat4.create();
             mat4.translate(modelMatrix, modelMatrix, cubePosition);
             mat4.rotateY(modelMatrix, modelMatrix, i);
